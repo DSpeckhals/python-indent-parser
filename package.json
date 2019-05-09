@@ -1,0 +1,42 @@
+{
+  "name": "python-indent-parser",
+  "version": "0.1.0",
+  "description": "A simple parser of Python source for proper indentation",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib/**/*"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "lint": "tslint -p tsconfig.json",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run lint",
+    "preversion": "npm run lint",
+    "version": "git add -A src",
+    "postversion": "git push && git push --tags"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DSpeckhals/python-indent-parser.git"
+  },
+  "keywords": [
+    "python",
+    "vscode",
+    "atom"
+  ],
+  "author": "Dustin Speckhals <dustin1114@gmail.com>",
+  "contributors": [
+    "Kevin Rose <kevin+gh@maypark.com>"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/DSpeckhals/python-indent-parser/issues"
+  },
+  "homepage": "https://github.com/DSpeckhals/python-indent-parser#readme",
+  "devDependencies": {
+    "tslint": "^5.16.0",
+    "typescript": "^3.4.5"
+  }
+}
