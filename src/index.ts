@@ -67,7 +67,7 @@ function nextIndentationLevel(parseOutput: IParseOutput, lines: string[], tabSiz
     // At this point, we are guaranteed openBracketStack is non-empty,
     // which means that we are currently in the middle of an opened/closed
     // bracket.
-    const lastOpenBracketLocation = openBracketStack.pop();
+    const lastOpenBracketLocation = openBracketStack[openBracketStack.length - 1];
 
     // Get some booleans to help work through the cases
 
