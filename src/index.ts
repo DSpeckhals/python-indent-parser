@@ -4,7 +4,7 @@ export enum Hanging {
     Full,
 }
 
-interface IParseOutput {
+export interface IParseOutput {
     canHang: boolean;
     dedent: boolean;
     lastClosedRow: number[];
@@ -21,7 +21,7 @@ function indentationLevel(line: string): number {
 export function indentationInfo(lines: string[], tabSize: number) {
     const parseOutput = parseLines(lines);
     const nextIndent = nextIndentationLevel(parseOutput, lines, tabSize);
-    return { nextIndentationLevel: nextIndent, canHang: parseOutput.canHang };
+    return { nextIndentationLevel: nextIndent, parseOutput };
 }
 
 function nextIndentationLevel(parseOutput: IParseOutput, lines: string[], tabSize: number): number {
