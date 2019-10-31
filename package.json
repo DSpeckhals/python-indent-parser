@@ -8,11 +8,11 @@
     "lib/**/*"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "mocha --ui tdd -r ts-node/register test/index.ts",
     "build": "tsc",
     "lint": "tslint -p tsconfig.json",
     "prepare": "npm run build",
-    "prepublishOnly": "npm run lint",
+    "prepublishOnly": "npm test && npm run lint",
     "preversion": "npm run lint",
     "version": "git add -A src",
     "postversion": "git push && git push --tags"
@@ -36,6 +36,10 @@
   },
   "homepage": "https://github.com/DSpeckhals/python-indent-parser#readme",
   "devDependencies": {
+    "@types/mocha": "^5.2.7",
+    "@types/node": "^12.12.3",
+    "mocha": "^6.2.2",
+    "ts-node": "^8.4.1",
     "tslint": "^5.16.0",
     "typescript": "^3.4.5"
   }

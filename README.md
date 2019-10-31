@@ -1,5 +1,7 @@
 # python-indent-parser
 
+[![Build Status](https://travis-ci.com/DSpeckhals/python-indent-parser.svg?branch=master)](https://travis-ci.com/DSpeckhals/python-indent-parser)
+
 This package is the base parser for Atom's [python-indent](https://github.com/DSpeckhals/python-indent)
 package to better handle Python indentation after a new line.
 

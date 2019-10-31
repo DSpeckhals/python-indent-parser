@@ -6,15 +6,13 @@ export enum Hanging {
 
 export interface IParseOutput {
     canHang: boolean;
-    dedent: boolean;
+    dedentNext: boolean;
     lastClosedRow: number[];
     lastColonRow: number;
     openBracketStack: number[][];
 }
 
-const DEDENT_KEYWORDS = ["return", "pass", "break", "continue", "raise"];
-
-function indentationLevel(line: string): number {
+export function indentationLevel(line: string): number {
     return line.search(/\S|$/);
 }
 
@@ -24,19 +22,18 @@ export function indentationInfo(lines: string[], tabSize: number) {
     return { nextIndentationLevel: nextIndent, parseOutput };
 }
 
-function nextIndentationLevel(parseOutput: IParseOutput, lines: string[], tabSize: number): number {
+export function nextIndentationLevel(parseOutput: IParseOutput, lines: string[], tabSize: number): number {
     const row = lines.length - 1;
-    // canHang: Boolean, indicating whether or not a hanging indent is needed.
-    // dedent: Boolean, should we dedent the next row?
+    // openBracketStack: A stack of [row, col] pairs describing where open brackets are
     // lastClosedRow: Either empty, or an array [rowOpen, rowClose] describing the rows
     //     where the last bracket to be closed was opened and closed.
     // lastColonRow: The last row a def/for/if/elif/else/try/except etc. block started
-    // openBracketStack: A stack of [row, col] pairs describing where open brackets are
+    // dedentNext: Boolean, should we dedent the next row?
     const {
-        dedent, lastClosedRow, lastColonRow, openBracketStack,
+        openBracketStack, lastClosedRow, lastColonRow, dedentNext,
     } = parseOutput;
 
-    if (dedent  && !openBracketStack.length) {
+    if (dedentNext && !openBracketStack.length) {
         return indentationLevel(lines[row]) - tabSize;
     }
 
@@ -83,6 +80,8 @@ function nextIndentationLevel(parseOutput: IParseOutput, lines: string[], tabSiz
     const closedBracketOpenedAfterLineWithCurrentOpen = haveClosedBracket
         && lastClosedRow[0] > lastOpenBracketLocation![0];
 
+    let indentColumn;
+
     if (!justOpenedBracket && !justClosedBracket) {
         // The bracket was opened before the previous line,
         // and we did not close a bracket on the previous line.
@@ -90,34 +89,35 @@ function nextIndentationLevel(parseOutput: IParseOutput, lines: string[], tabSiz
         // indentation level since the previous line, so
         // we should use whatever indent we are given.
         return indentationLevel(lines[row]);
+    } else if (justClosedBracket && closedBracketOpenedAfterLineWithCurrentOpen) {
+        // A bracket that was opened after the most recent open
+        // bracket was closed on the line we just finished typing.
+        // We should use whatever indent was used on the row
+        // where we opened the bracket we just closed. This needs
+        // to be handled as a separate case from the last case below
+        // in case the current bracket is using a hanging indent.
+        // This handles cases such as
+        // x = [0, 1, 2,
+        //      [3, 4, 5,
+        //       6, 7, 8],
+        //      9, 10, 11]
+        // which would be correctly handled by the case below, but it also correctly handles
+        // x = [
+        //     0, 1, 2, [3, 4, 5,
+        //               6, 7, 8],
+        //     9, 10, 11
+        // ]
+        // which the last case below would incorrectly indent an extra space
+        // before the "9", because it would try to match it up with the
+        // open bracket instead of using the hanging indent.
+        indentColumn = indentationLevel(lines[lastClosedRow[0]]);
+    } else {
+        // lastOpenBracketLocation[1] is the column where the bracket was,
+        // so need to bump up the indentation by one
+        indentColumn = lastOpenBracketLocation![1] + 1;
     }
 
-    // A bracket that was opened after the most recent open
-    // bracket was closed on the line we just finished typing.
-    // We should use whatever indent was used on the row
-    // where we opened the bracket we just closed. This needs
-    // to be handled as a separate case from the last case below
-    // in case the current bracket is using a hanging indent.
-    // This handles cases such as
-    // x = [0, 1, 2,
-    //      [3, 4, 5,
-    //       6, 7, 8],
-    //      9, 10, 11]
-    // which would be correctly handled by the case below, but it also correctly handles
-    // x = [
-    //     0, 1, 2, [3, 4, 5,
-    //               6, 7, 8],
-    //     9, 10, 11
-    // ]
-    // which the last case below would incorrectly indent an extra space
-    // before the "9", because it would try to match it up with the
-    // open bracket instead of using the hanging indent.
-
-    // lastOpenBracketLocation[1] is the column where the bracket was,
-    // so need to bump up the indentation by one
-    return justClosedBracket && closedBracketOpenedAfterLineWithCurrentOpen
-        ? indentationLevel(lines[lastClosedRow[0]])
-        : lastOpenBracketLocation![1] + 1;
+    return indentColumn;
 }
 
 function parseLines(lines: string[]) {
@@ -139,12 +139,11 @@ function parseLines(lines: string[]) {
     // in order to correctly parse triple quoted strings.
     let checkNextCharForString = false;
     // true if we should dedent the next row, false otherwise
-    let dedent = false;
-    // current run of non-special characters, used to detect things
-    // like return, pass, break, continue, raise
-    let currentRun = "";
+    let dedentNext = false;
     // true if we should have a hanging indent, false otherwise
     let canHang = false;
+    // if we see these words at the beginning of a line, dedent the next one
+    const dedentNextKeywords = [/^\s*return\b/, /^\s*pass\b/, /^\s*break\b/, /^\s*continue\b/, /^\s*raise\b/];
 
     // NOTE: this parsing will only be correct if the python code is well-formed
     // statements like "[0, (1, 2])" might break the parsing
@@ -152,9 +151,8 @@ function parseLines(lines: string[]) {
     // loop over each line
     const linesLength = lines.length;
     for (let row = 0; row < linesLength; row += 1) {
-        dedent = false;
-        currentRun = "";
         const line = lines[row];
+        dedentNext = (stringDelimiter === null) && dedentNextKeywords.some((word) => line.search(word) >= 0);
 
         // Keep track of the number of consecutive string delimiter's we've seen
         // in this line; this is used to tell if we are in a triple quoted string
@@ -168,11 +166,6 @@ function parseLines(lines: string[]) {
         const lineLength = line.length;
         for (let col = 0; col < lineLength; col += 1) {
             const c = line[col];
-
-            currentRun = currentRun + c;
-            if (DEDENT_KEYWORDS.indexOf(currentRun) >= 0) {
-                dedent = true;
-            }
 
             if (c === stringDelimiter && !isEscaped) {
                 numConsecutiveStringDelimiters += 1;
@@ -238,17 +231,10 @@ function parseLines(lines: string[]) {
                 // characters after this, then they will set the canHang boolean to false
                 canHang = true;
 
-                currentRun = "";
                 openBracketStack.push([row, col]);
             } else if (" \t\r\n".includes(c)) { // just in case there's a new line
-                // If it's whitespace, we don't care at all.
-                // This check is necessary so we don't set canHang to false even if
-                // someone e.g. just entered a space between the opening bracket and the
-                // newline.
-
-                currentRun = "";
+                // If it's whitespace, we don't care at all
             } else if (c === "#") {
-                currentRun = "";
                 break; // skip the rest of this line.
             } else {
                 // We've already skipped if the character was white-space, an opening
@@ -267,9 +253,7 @@ function parseLines(lines: string[]) {
 
                 if (c === ":") {
                     lastColonRow = row;
-                    currentRun = "";
                 } else if ("})]".includes(c) && openBracketStack.length) {
-                    currentRun = "";
                     const openedRow = openBracketStack.pop()![0];
                     // lastClosedRow is used to set the indentation back to what it was
                     // on the line when the corresponding bracket was opened. However,
@@ -291,21 +275,28 @@ function parseLines(lines: string[]) {
                     // Starting a string, keep track of what quote was used to start it.
                     stringDelimiter = c;
                     numConsecutiveStringDelimiters += 1;
-                    currentRun = "";
                 }
             }
         }
     }
     return {
-        canHang, dedent, lastClosedRow, lastColonRow, openBracketStack,
+        canHang, dedentNext, lastClosedRow, lastColonRow, openBracketStack,
     };
 }
 
+// Determines if a hanging indent should happen, and if so how much of one
 export function shouldHang(line: string, char: number): Hanging {
     if (char <= 0) {
         return Hanging.None;
     }
-    const allowedChars = "#])}: \t\r".split("");
+    // Line continuation using backslash
+    if (line[char - 1] === "\\") {
+        return Hanging.Partial;
+    }
+    // These characters don't prevent the indent from being a Full indent.
+    // If other characters exist after the cursor, then it's going to be
+    // a partial indent.
+    const allowedChars = "])}: \t\r".split("");
     const theRest = new Set(line.slice(char).split(""));
     allowedChars.forEach((c) => theRest.delete(c));
     if ("[({".includes(line[char - 1])) {
