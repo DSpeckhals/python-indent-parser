@@ -1,8 +1,15 @@
 export enum Hanging {
-    None,
-    Partial,
-    Full,
+    None, // No hanging indent should be done
+    Partial, // Indent the next line
+    Full, // Indent the next line, and put the closing bracket on its own line
 }
+// Examples, the pipe character indicates your cursor before pressing Enter
+// Hanging.None:
+//  def f():|
+// Hanging.Partial
+//  def f(|x):
+// Hanging.Full
+//  def f(|):
 
 export interface IParseOutput {
     canHang: boolean;
@@ -286,24 +293,31 @@ function parseLines(lines: string[]) {
 
 // Determines if a hanging indent should happen, and if so how much of one
 export function shouldHang(line: string, char: number): Hanging {
-    if (char <= 0) {
+    if (char <= 0 || line.length === 0) {
         return Hanging.None;
     }
     // Line continuation using backslash
     if (line[char - 1] === "\\") {
         return Hanging.Partial;
     }
-    // These characters don't prevent the indent from being a Full indent.
-    // If other characters exist after the cursor, then it's going to be
-    // a partial indent.
-    const allowedChars = "])}: \t\r".split("");
-    const theRest = new Set(line.slice(char).split(""));
-    allowedChars.forEach((c) => theRest.delete(c));
-    if ("[({".includes(line[char - 1])) {
-        if (!theRest.size) {
-            return Hanging.Full;
-        }
-        return Hanging.Partial;
+    if (!"[({".includes(line[char - 1])) {
+        return Hanging.None;
     }
-    return Hanging.None;
+    // These characters don't have an effect one way or another.
+    const neutralChars = ": \t\r".split("");
+    // The presence of these characters mean that we're in Full mode.
+    const fullChars = "]})".split("");
+
+    const theRest = new Set(line.slice(char).split(""));
+    // We only return Hanging.Full if the rest of the characters
+    // are neutralChars/fullChars, *and* if at least one of the fullChars
+    // is in theRest
+    neutralChars.forEach((c) => theRest.delete(c));
+    const containsSomeChars = theRest.size > 0;
+    fullChars.forEach((c) => theRest.delete(c));
+    const containsOnlyFullChars = theRest.size === 0;
+    if (containsSomeChars && containsOnlyFullChars) {
+        return Hanging.Full;
+    }
+    return Hanging.Partial;
 }
