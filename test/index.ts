@@ -363,17 +363,11 @@ x = ['here(\\'(', 'is', 'a',\n\
         });
         test("list", () => {
             assert.equal(parser.Hanging.Full, parser.shouldHang(
-                "this_list = [",
+                "this_list = []",
                 "this_list = [".length,
             ));
         });
         test("function", () => {
-            assert.equal(parser.Hanging.Full, parser.shouldHang(
-                "def my_func(",
-                "def my_func(".length,
-            ));
-        });
-        test("function with end paren", () => {
             assert.equal(parser.Hanging.Full, parser.shouldHang(
                 "def my_func()",
                 "def my_func(".length,
@@ -392,12 +386,6 @@ x = ['here(\\'(', 'is', 'a',\n\
             ));
         });
         test("starting indented", () => {
-            assert.equal(parser.Hanging.Full, parser.shouldHang(
-                "    def __init__(",
-                "    def __init__(".length,
-            ));
-        });
-        test("starting indented with end paren", () => {
             assert.equal(parser.Hanging.Full, parser.shouldHang(
                 "    def __init__()",
                 "    def __init__(".length,
@@ -424,6 +412,12 @@ x = ['here(\\'(', 'is', 'a',\n\
         test("text after position", () => {
             assert.equal(parser.Hanging.Partial, parser.shouldHang(
                 "this_list = [x]",
+                "this_list = [".length,
+            ));
+        });
+        test("no closing bracket", () => {
+            assert.equal(parser.Hanging.Partial, parser.shouldHang(
+                "this_list = [",
                 "this_list = [".length,
             ));
         });
