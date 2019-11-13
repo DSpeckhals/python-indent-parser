@@ -23,12 +23,6 @@ export function indentationLevel(line: string): number {
     return line.search(/\S|$/);
 }
 
-export function indentationInfo(lines: string[], tabSize: number) {
-    const parseOutput = parseLines(lines);
-    const nextIndent = nextIndentationLevel(parseOutput, lines, tabSize);
-    return { nextIndentationLevel: nextIndent, parseOutput };
-}
-
 export function nextIndentationLevel(parseOutput: IParseOutput, lines: string[], tabSize: number): number {
     const row = lines.length - 1;
     // openBracketStack: A stack of [row, col] pairs describing where open brackets are
@@ -127,7 +121,7 @@ export function nextIndentationLevel(parseOutput: IParseOutput, lines: string[],
     return indentColumn;
 }
 
-function parseLines(lines: string[]) {
+function parseLines(lines: string[]): IParseOutput {
     // openBracketStack is an array of [row, col] indicating the location
     // of the opening bracket (square, curly, or parentheses)
     const openBracketStack = [];
@@ -289,6 +283,12 @@ function parseLines(lines: string[]) {
     return {
         canHang, dedentNext, lastClosedRow, lastColonRow, openBracketStack,
     };
+}
+
+export function indentationInfo(lines: string[], tabSize: number): { nextIndentationLevel: number; parseOutput: IParseOutput } {
+    const parseOutput = parseLines(lines);
+    const nextIndent = nextIndentationLevel(parseOutput, lines, tabSize);
+    return { nextIndentationLevel: nextIndent, parseOutput };
 }
 
 // Determines if a hanging indent should happen, and if so how much of one

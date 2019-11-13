@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.1.4] - 2019-11-12
 ### Fixed
-- Fix hanging indent logic when cursor is between brackets. 
+- Fix hanging indent logic when cursor is between brackets.
 
 [Unreleased]: https://github.com/DSpeckhals/python-indent-parser/compare/v0.1.4...HEAD
 [0.1.4]: https://github.com/DSpeckhals/python-indent-parser/compare/v0.1.3...v0.1.4
